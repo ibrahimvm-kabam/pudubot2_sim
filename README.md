@@ -23,3 +23,5 @@ This repository is being built up incrementally, one capability per pull request
        pudubot2_sim
    ```
 4. Check it's up: `curl http://localhost:7896/health`.
+
+Alternatively, adjust the paths in `docker-compose.yml` and run `docker compose up`.
