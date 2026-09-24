@@ -10,6 +10,21 @@ initial_state:
     theta: 0
   battery: 100 # 0-100, matches the real adapter's /battery/level scale
 
-# Populated per map in later PRs: floorplan calibration (occupancy map
-# generation) and waypoint lists (map management).
-maps: {}
+# Directory the building's floorplan scans are mounted into (read-only),
+# see the docker run / docker-compose examples in the README.
+floorplans_dir: "/app/floorplans"
+
+# Waypoint lists (map management) are added to these entries in a later PR.
+maps:
+  L8:
+    floorplan:
+      file: "M Hotel Floor Plan_L8_page-0001.png"
+      # Seeded from fleet_adapter_pudu/configs/config.yaml's
+      # transforms.L8 block, which calibrates the pre-built robot map for
+      # this level, not this raw floorplan scan (different pixel scale) -
+      # treat these as a starting point and recalibrate for the real scan.
+      resolution: 0.05 # meters per pixel
+      origin:
+        x: -29.264883
+        y: -34.901213
+      rotation: 0 # degrees, applied before thresholding
