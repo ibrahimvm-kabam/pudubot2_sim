@@ -3,6 +3,8 @@
 services:
   pudubot2_sim:
     build: .
+    image: pudubot2_sim:latest
+    container_name: pudubot2_sim
     network_mode: host
     volumes:
       - ./configs/config.yaml:/app/configs/config.yaml
