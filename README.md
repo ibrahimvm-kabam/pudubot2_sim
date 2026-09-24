@@ -7,3 +7,19 @@ It generates a navigable occupancy map from a building's floorplan scans, then s
 ## Status
 
 This repository is being built up incrementally, one capability per pull request. See the open and merged PRs for progress.
+
+## Running
+
+1. Copy `configs/sample_config.yaml` and adjust it for your deployment (robot name, port, initial map/pose/battery).
+2. Build the image:
+   ```bash
+   docker build -t pudubot2_sim .
+   ```
+3. Run it, mounting your config over the in-image path and the building's floorplan scans read-only (see `fleet_adapter_pudu` for the matching `robot_url`/floorplan-calibration conventions):
+   ```bash
+   docker run -it --rm --network=host \
+       -v ./configs/config.yaml:/app/configs/config.yaml \
+       -v /path/to/floorplans:/app/floorplans:ro \
+       pudubot2_sim
+   ```
+4. Check it's up: `curl http://localhost:7896/health`.

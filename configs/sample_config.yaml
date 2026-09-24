@@ -1,0 +1,15 @@
+# Copy this file to config.yaml (or mount your own file at that path) before running.
+robot_name: "Hiro"
+port: 7896
+
+initial_state:
+  map: "L8"
+  pose:
+    x: 3.07
+    y: 9.28
+    theta: 0
+  battery: 100 # 0-100, matches the real adapter's /battery/level scale
+
+# Populated per map in later PRs: floorplan calibration (occupancy map
+# generation) and waypoint lists (map management).
+maps: {}
