@@ -1,0 +1,11 @@
+# Reference compose file - mirrors the `docker run` command in the README.
+# Adjust the floorplans path for your deployment before use.
+services:
+  pudubot2_sim:
+    build: .
+    image: pudubot2_sim:latest
+    container_name: pudubot2_sim
+    network_mode: host
+    volumes:
+      - ./configs/config.yaml:/app/configs/config.yaml
+      - /path/to/floorplans:/app/floorplans:ro
