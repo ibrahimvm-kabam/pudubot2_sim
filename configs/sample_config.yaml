@@ -28,3 +28,8 @@ maps:
         x: -29.264883
         y: -34.901213
       rotation: 0 # degrees, applied before thresholding
+      # Strips thin dimension/gridlines that would otherwise cut through
+      # corridors in the occupancy grid. 3 is a light touch that works for
+      # this scan; re-tune per floorplan (see build_occupancy_grid
+      # docstring) - too large starts eating real walls too.
+      opening_kernel_px: 3

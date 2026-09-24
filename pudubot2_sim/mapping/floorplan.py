@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 from pudubot2_sim.config import Config
 
@@ -48,10 +48,26 @@ def build_occupancy_grid(
     origin_x: float,
     origin_y: float,
     rotation_degrees: float = 0.0,
+    opening_kernel_px: int = 0,
 ) -> OccupancyGrid:
+    """Thresholds a floorplan scan into an occupancy grid.
+
+    Architectural floorplan scans mix wall linework with thin annotation
+    lines (dimension lines, gridlines) at a similar stroke weight, so a
+    plain intensity threshold marks both as occupied - including lines
+    that cut straight through open corridors. `opening_kernel_px`, if set,
+    applies a morphological opening (erode then dilate) to strip lines
+    thinner than that many pixels before thresholding. It needs tuning per
+    floorplan: too small leaves annotation lines in, too large starts
+    eating real walls, since both are drawn at a similar weight in some
+    scans.
+    """
     image = Image.open(floorplan_path).convert("L")
     if rotation_degrees:
         image = image.rotate(rotation_degrees, expand=True)
+    if opening_kernel_px > 1:
+        image = image.filter(ImageFilter.MaxFilter(opening_kernel_px))
+        image = image.filter(ImageFilter.MinFilter(opening_kernel_px))
     occupied = np.array(image) < OCCUPIED_THRESHOLD
     return OccupancyGrid(resolution, origin_x, origin_y, occupied)
 
@@ -74,5 +90,6 @@ def load_occupancy_grids(config: Config) -> dict[str, OccupancyGrid]:
             origin_x=origin["x"],
             origin_y=origin["y"],
             rotation_degrees=floorplan.get("rotation", 0.0),
+            opening_kernel_px=floorplan.get("opening_kernel_px", 0),
         )
     return grids
