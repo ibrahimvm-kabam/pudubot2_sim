@@ -21,6 +21,7 @@ USER_ACKNOWLEDGEMENT_STATUS = "UserAcknowledgementStatus"
 BATTERY_LEVEL = "BatteryLevel"
 CHARGING_STATUS = "ChargingStatus"
 ESTOP = "Estop"
+SWITCH_MAP_RESULT = "SwitchMapResult"
 
 
 @dataclass
@@ -91,6 +92,15 @@ class TelemetryBroker:
     def set_estop(self, estop: bool) -> None:
         self.state.estop = estop
         self._publish(ESTOP, estop)
+
+    def publish_switch_map_result(self, success: bool) -> None:
+        """Signals the outcome of a map switch.
+
+        Not part of `RobotState` and never seeded to a new subscriber - it's
+        a one-off result for whichever switch just completed, not a
+        steady-state field.
+        """
+        self._publish(SWITCH_MAP_RESULT, success)
 
     def _seed_events(self) -> list[str]:
         """The current value of every field, sent to a subscriber on connect."""
