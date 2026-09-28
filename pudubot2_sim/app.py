@@ -9,6 +9,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from pudubot2_sim.config import Config
 from pudubot2_sim.mapping import load_maps
+from pudubot2_sim.navigation import NavigationController
 from pudubot2_sim.telemetry import TelemetryBroker
 
 # Comfortably under fleet_adapter_pudu's default 30s sse_stale_after, so its
@@ -23,12 +24,18 @@ class MapSwitchRequest(BaseModel):
     mapName: str
 
 
+class NavigationStartRequest(BaseModel):
+    waypointId: str
+
+
 def create_app(config: Config) -> FastAPI:
     app = FastAPI(title=f"pudubot2_sim ({config.robot_name})")
     telemetry = TelemetryBroker(config)
     maps = load_maps(config)
+    navigation = NavigationController(telemetry, maps, config.navigation_speed_m_per_s)
     app.state.telemetry = telemetry
     app.state.maps = maps
+    app.state.navigation = navigation
 
     @app.get("/health")
     def health() -> dict:
@@ -66,6 +73,27 @@ def create_app(config: Config) -> FastAPI:
             raise HTTPException(status_code=400, detail=f"Unknown map: {body.mapName}")
         asyncio.create_task(_switch_map(telemetry, body.mapName))
         return {"switching": True}
+
+    @app.get("/pose")
+    def pose() -> dict:
+        return asdict(telemetry.state.pose)
+
+    @app.get("/navigation/status")
+    def navigation_status() -> dict:
+        return {"status": telemetry.state.navigation_status}
+
+    @app.post("/navigation/start")
+    async def navigation_start(body: NavigationStartRequest) -> dict:
+        if not navigation.start(body.waypointId):
+            raise HTTPException(
+                status_code=400, detail=f"Unknown waypoint: {body.waypointId}"
+            )
+        return {"started": True}
+
+    @app.post("/navigation/stop")
+    async def navigation_stop() -> dict:
+        navigation.stop()
+        return {"stopped": True}
 
     return app
 

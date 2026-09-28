@@ -23,6 +23,7 @@ class Config:
     initial_map: str
     initial_pose: Pose
     initial_battery: float
+    navigation_speed_m_per_s: float
     # Raw per-map config (waypoint list, charger waypoint id), parsed into
     # structured MapConfig objects by pudubot2_sim.mapping.
     maps: dict[str, Any]
@@ -41,5 +42,6 @@ def load_config(path: Path) -> Config:
         initial_map=initial_state["map"],
         initial_pose=Pose(x=pose["x"], y=pose["y"], theta=pose["theta"]),
         initial_battery=initial_state["battery"],
+        navigation_speed_m_per_s=raw.get("navigation_speed_m_per_s", 0.4),
         maps=raw.get("maps", {}),
     )

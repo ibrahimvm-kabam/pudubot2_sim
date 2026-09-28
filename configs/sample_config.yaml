@@ -10,6 +10,8 @@ initial_state:
     theta: 0
   battery: 100 # 0-100, matches the real adapter's /battery/level scale
 
+navigation_speed_m_per_s: 0.4 # matches fleet_adapter_pudu's configured linear velocity limit for this robot
+
 # Waypoint coordinates below are a small sample drawn from the real
 # M_Hotel deployment's per-floor waypoint data, for a realistic default.
 maps:
