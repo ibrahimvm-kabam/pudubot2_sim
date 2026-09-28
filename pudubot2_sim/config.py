@@ -23,8 +23,8 @@ class Config:
     initial_map: str
     initial_pose: Pose
     initial_battery: float
-    # Raw per-map config (waypoints, floorplan calibration, etc.), structured
-    # and consumed by the modules that own each concern.
+    # Raw per-map config (waypoint list, charger waypoint id), parsed into
+    # structured MapConfig objects by pudubot2_sim.mapping.
     maps: dict[str, Any]
 
 
