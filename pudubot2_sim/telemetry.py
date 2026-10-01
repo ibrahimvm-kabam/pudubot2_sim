@@ -34,6 +34,7 @@ class RobotState:
     navigation_status: str
     awaiting_user_input: bool
     estop: bool
+    delivery_items: list[str]
 
     @property
     def battery_percentage(self) -> int:
@@ -50,6 +51,7 @@ class RobotState:
             navigation_status="UNKNOWN",
             awaiting_user_input=False,
             estop=False,
+            delivery_items=[],
         )
 
 
