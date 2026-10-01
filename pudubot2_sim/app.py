@@ -43,6 +43,14 @@ class LocalizationByWaypointRequest(BaseModel):
     waypoint: str
 
 
+class UserAcknowledgementRequest(BaseModel):
+    user_acknowledgment: bool
+
+
+class DeliveryItemsRequest(BaseModel):
+    delivery_items: list[str]
+
+
 def create_app(config: Config) -> FastAPI:
     telemetry = TelemetryBroker(config)
 
@@ -150,6 +158,28 @@ def create_app(config: Config) -> FastAPI:
             _relocalize(telemetry, Pose(waypoint.x, waypoint.y, waypoint.theta))
         )
         return {"relocating": True}
+
+    @app.post("/user_interaction/command")
+    def user_interaction_command(body: UserAcknowledgementRequest) -> dict:
+        telemetry.set_awaiting_user_input(body.user_acknowledgment)
+        return {"received": True}
+
+    @app.get("/user_interaction/state")
+    def user_interaction_state() -> dict:
+        return {"state": "not_implemented"}
+
+    @app.post("/set_delivery_items")
+    def set_delivery_items(body: DeliveryItemsRequest) -> dict:
+        telemetry.state.delivery_items = body.delivery_items
+        return {"received": True}
+
+    @app.get("/audio/play")
+    def audio_play() -> dict:
+        return {"Audio Triggered": True}
+
+    @app.get("/audio/stop")
+    def audio_stop() -> dict:
+        return {"Audio Stopped": True}
 
     return app
 
