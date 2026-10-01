@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from pudubot2_sim.battery import simulate_battery
-from pudubot2_sim.config import Config
+from pudubot2_sim.config import Config, Pose
 from pudubot2_sim.mapping import load_maps
 from pudubot2_sim.navigation import NavigationController
 from pudubot2_sim.telemetry import TelemetryBroker
@@ -21,6 +21,9 @@ HEARTBEAT_INTERVAL_SECONDS = 10
 # How long a simulated map switch takes before ActiveMap/SwitchMapResult fire.
 MAP_SWITCH_DELAY_SECONDS = 2.0
 
+# How long a simulated relocalization takes before the robot reports localized again.
+LOCALIZATION_DELAY_SECONDS = 2.0
+
 
 class MapSwitchRequest(BaseModel):
     mapName: str
@@ -28,6 +31,16 @@ class MapSwitchRequest(BaseModel):
 
 class NavigationStartRequest(BaseModel):
     waypointId: str
+
+
+class LocalizationByPoseRequest(BaseModel):
+    x: float = 0.0
+    y: float = 0.0
+    theta: float = 0.0
+
+
+class LocalizationByWaypointRequest(BaseModel):
+    waypoint: str
 
 
 def create_app(config: Config) -> FastAPI:
@@ -119,6 +132,25 @@ def create_app(config: Config) -> FastAPI:
     def battery_charging() -> dict:
         return {"battery": telemetry.state.charging}
 
+    @app.get("/localization/status")
+    def localization_status() -> dict:
+        return {"localized": telemetry.state.localized}
+
+    @app.post("/localization/by_pose")
+    async def localization_by_pose(body: LocalizationByPoseRequest) -> dict:
+        asyncio.create_task(_relocalize(telemetry, Pose(**body.model_dump())))
+        return {"relocating": True}
+
+    @app.post("/localization/by_waypoint_name")
+    async def localization_by_waypoint_name(body: LocalizationByWaypointRequest) -> dict:
+        waypoint = maps[telemetry.state.active_map].find_waypoint(body.waypoint)
+        if waypoint is None:
+            raise HTTPException(status_code=400, detail=f"Unknown waypoint: {body.waypoint}")
+        asyncio.create_task(
+            _relocalize(telemetry, Pose(waypoint.x, waypoint.y, waypoint.theta))
+        )
+        return {"relocating": True}
+
     return app
 
 
@@ -126,3 +158,10 @@ async def _switch_map(telemetry: TelemetryBroker, map_name: str) -> None:
     await asyncio.sleep(MAP_SWITCH_DELAY_SECONDS)
     telemetry.publish_switch_map_result(True)
     telemetry.set_active_map(map_name)
+
+
+async def _relocalize(telemetry: TelemetryBroker, pose: Pose) -> None:
+    telemetry.set_localized(False)
+    await asyncio.sleep(LOCALIZATION_DELAY_SECONDS)
+    telemetry.set_pose(pose)
+    telemetry.set_localized(True)
