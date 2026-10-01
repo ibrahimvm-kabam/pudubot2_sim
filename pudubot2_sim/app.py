@@ -1,12 +1,14 @@
 """FastAPI application exposing the simulated robot's HTTP API."""
 
 import asyncio
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from pudubot2_sim.battery import simulate_battery
 from pudubot2_sim.config import Config
 from pudubot2_sim.mapping import load_maps
 from pudubot2_sim.navigation import NavigationController
@@ -29,8 +31,15 @@ class NavigationStartRequest(BaseModel):
 
 
 def create_app(config: Config) -> FastAPI:
-    app = FastAPI(title=f"pudubot2_sim ({config.robot_name})")
     telemetry = TelemetryBroker(config)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        battery_task = asyncio.create_task(simulate_battery(telemetry))
+        yield
+        battery_task.cancel()
+
+    app = FastAPI(title=f"pudubot2_sim ({config.robot_name})", lifespan=lifespan)
     maps = load_maps(config)
     navigation = NavigationController(telemetry, maps, config.navigation_speed_m_per_s)
     app.state.telemetry = telemetry
@@ -94,6 +103,21 @@ def create_app(config: Config) -> FastAPI:
     async def navigation_stop() -> dict:
         navigation.stop()
         return {"stopped": True}
+
+    @app.get("/charge")
+    async def charge() -> dict:
+        if not navigation.charge():
+            raise HTTPException(status_code=400, detail="No charger on the active map")
+        return {"charging": True}
+
+    @app.get("/battery/level")
+    def battery_level() -> dict:
+        return {"battery": telemetry.state.battery_percentage}
+
+    # The real robot reports charging under the "battery" key as well.
+    @app.get("/battery/charging")
+    def battery_charging() -> dict:
+        return {"battery": telemetry.state.charging}
 
     return app
 

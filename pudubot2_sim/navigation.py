@@ -29,20 +29,32 @@ class NavigationController:
 
     def start(self, waypoint_id: str) -> bool:
         """Starts moving toward the waypoint. Returns False if it's unknown on the active map."""
-        current_map = self._maps[self._telemetry.state.active_map]
-        target = current_map.find_waypoint(waypoint_id)
+        target = self._maps[self._telemetry.state.active_map].find_waypoint(waypoint_id)
         if target is None:
             return False
-        self.stop()
-        self._task = asyncio.create_task(self._navigate_to(target))
+        self._begin(target, docking=False)
         return True
+
+    def charge(self) -> bool:
+        """Moves to the active map's charger and docks. Returns False if the map has none."""
+        charger = self._maps[self._telemetry.state.active_map].charger_waypoint()
+        if charger is None:
+            return False
+        self._begin(charger, docking=True)
+        return True
+
+    def _begin(self, target: Waypoint, docking: bool) -> None:
+        self.stop()
+        self._task = asyncio.create_task(self._navigate_to(target, docking))
 
     def stop(self) -> None:
         if self._task is not None:
             self._task.cancel()
             self._task = None
 
-    async def _navigate_to(self, target: Waypoint) -> None:
+    async def _navigate_to(self, target: Waypoint, docking: bool) -> None:
+        if self._telemetry.state.charging:
+            self._telemetry.set_charging(False)
         self._telemetry.set_navigation_status("MOVING")
         start = self._telemetry.state.pose
         distance = math.hypot(target.x - start.x, target.y - start.y)
@@ -72,4 +84,6 @@ class NavigationController:
             await asyncio.sleep(duration - elapsed)
         self._telemetry.set_pose(Pose(x=target.x, y=target.y, theta=target.theta))
         self._telemetry.set_navigation_status("ARRIVED")
+        if docking:
+            self._telemetry.set_charging(True)
         self._task = None
