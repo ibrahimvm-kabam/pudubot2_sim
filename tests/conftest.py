@@ -74,6 +74,7 @@ class EventListener:
 @pytest.fixture
 def sim(request, monkeypatch):
     """An httpx client pointed at a running simulator. Parametrize with {"speed": m/s} to override navigation speed."""
+    monkeypatch.setattr(app_module, "LOCALIZATION_DELAY_SECONDS", 0.1)
     monkeypatch.setattr(app_module, "MAP_SWITCH_DELAY_SECONDS", 0.1)
     monkeypatch.setattr(battery_module, "TICK_SECONDS", 0.05)
     monkeypatch.setattr(battery_module, "CHARGE_PERCENT_PER_SECOND", 100.0)
