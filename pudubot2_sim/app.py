@@ -3,9 +3,10 @@
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from pudubot2_sim.battery import simulate_battery
@@ -49,6 +50,23 @@ class UserAcknowledgementRequest(BaseModel):
 
 class DeliveryItemsRequest(BaseModel):
     delivery_items: list[str]
+
+
+class EstopRequest(BaseModel):
+    estop: bool
+
+
+class BatteryLevelRequest(BaseModel):
+    level: float = Field(ge=0, le=100)
+
+
+class NavigationStatusRequest(BaseModel):
+    # Names match NavigationStatus in pudubot2_adapter.
+    status: Literal[
+        "ARRIVED", "MOVING", "APPROACHING", "AVOID", "STUCK", "PAUSE", "RESUME",
+        "FAIL_ESCAPE", "TO_ESCAPE", "ESCAPING", "ESCAPE_FINISHED", "RE_PLANNING",
+        "UNKNOWN",
+    ]  # fmt: skip
 
 
 def create_app(config: Config) -> FastAPI:
@@ -180,6 +198,40 @@ def create_app(config: Config) -> FastAPI:
     @app.get("/audio/stop")
     def audio_stop() -> dict:
         return {"Audio Stopped": True}
+
+    # Test controls: actions that happen on the physical robot rather than over
+    # the adapter's API, so an automated test can drive them.
+
+    @app.get("/sim/state")
+    def sim_state() -> dict:
+        return asdict(telemetry.state)
+
+    @app.post("/sim/user_acknowledgement")
+    def sim_user_acknowledgement() -> dict:
+        """Simulates the user tapping Done, which is only visible while awaiting input."""
+        if not telemetry.state.awaiting_user_input:
+            raise HTTPException(status_code=409, detail="Not awaiting user input")
+        telemetry.set_awaiting_user_input(False)
+        return {"acknowledged": True}
+
+    @app.post("/sim/estop")
+    def sim_estop(body: EstopRequest) -> dict:
+        if body.estop:
+            navigation.stop()
+        telemetry.set_estop(body.estop)
+        return {"estop": body.estop}
+
+    @app.post("/sim/battery")
+    def sim_battery(body: BatteryLevelRequest) -> dict:
+        telemetry.set_battery_level(body.level)
+        return {"battery": telemetry.state.battery_percentage}
+
+    @app.post("/sim/navigation_status")
+    def sim_navigation_status(body: NavigationStatusRequest) -> dict:
+        """Halts motion and reports the given status, e.g. STUCK."""
+        navigation.stop()
+        telemetry.set_navigation_status(body.status)
+        return {"status": body.status}
 
     return app
 
