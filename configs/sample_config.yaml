@@ -12,6 +12,21 @@ initial_state:
 
 navigation_speed_m_per_s: 0.4 # matches fleet_adapter_pudu's configured linear velocity limit for this robot
 
+battery:
+  drain_percent_per_meter: 0.1 # drained while moving
+  charge_percent_per_second: 1.0 # gained while docked
+  docking_seconds: 2 # time from arriving at the charger to ChargingStatus: true
+
+localization:
+  delay_seconds: 2 # time a /localization/by_* request takes to complete
+
+user_interaction:
+  # Simulated "Done" tap on the delivery tablet, this long after the adapter sets
+  # user_acknowledgment=true. Omit to wait for `POST /sim/acknowledge` instead.
+  auto_acknowledge_seconds: 5
+
+sim_api: true # expose the /sim/* fault-injection endpoints
+
 # Waypoint coordinates below are a small sample drawn from the real
 # M_Hotel deployment's per-floor waypoint data, for a realistic default.
 maps:

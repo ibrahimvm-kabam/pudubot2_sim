@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from dataclasses import asdict, dataclass
 
 from pudubot2_sim.config import Config, Pose
@@ -22,6 +23,13 @@ BATTERY_LEVEL = "BatteryLevel"
 CHARGING_STATUS = "ChargingStatus"
 ESTOP = "Estop"
 SWITCH_MAP_RESULT = "SwitchMapResult"
+
+
+def _envelope(event_type: str, data: object) -> str:
+    """The `{type, data, timestamp}` wrapper pudubot2_adapter puts on every SSE event."""
+    return json.dumps(
+        {"type": event_type, "data": data, "timestamp": int(time.time() * 1000)}
+    )
 
 
 @dataclass
@@ -57,7 +65,7 @@ class TelemetryBroker:
         self._subscribers: list[asyncio.Queue[str]] = []
 
     def _publish(self, event_type: str, data: object) -> None:
-        message = json.dumps({"type": event_type, "data": data})
+        message = _envelope(event_type, data)
         for queue in self._subscribers:
             queue.put_nowait(message)
 
@@ -106,14 +114,14 @@ class TelemetryBroker:
         """The current value of every field, sent to a subscriber on connect."""
         state = self.state
         return [
-            json.dumps({"type": POSE, "data": asdict(state.pose)}),
-            json.dumps({"type": NAVIGATION_STATUS, "data": state.navigation_status}),
-            json.dumps({"type": LOCALIZATION_STATUS, "data": state.localized}),
-            json.dumps({"type": ACTIVE_MAP, "data": state.active_map}),
-            json.dumps({"type": USER_ACKNOWLEDGEMENT_STATUS, "data": state.awaiting_user_input}),
-            json.dumps({"type": BATTERY_LEVEL, "data": state.battery_level}),
-            json.dumps({"type": CHARGING_STATUS, "data": state.charging}),
-            json.dumps({"type": ESTOP, "data": state.estop}),
+            _envelope(POSE, asdict(state.pose)),
+            _envelope(NAVIGATION_STATUS, state.navigation_status),
+            _envelope(LOCALIZATION_STATUS, state.localized),
+            _envelope(ACTIVE_MAP, state.active_map),
+            _envelope(USER_ACKNOWLEDGEMENT_STATUS, state.awaiting_user_input),
+            _envelope(BATTERY_LEVEL, state.battery_level),
+            _envelope(CHARGING_STATUS, state.charging),
+            _envelope(ESTOP, state.estop),
         ]
 
     async def subscribe(self):
