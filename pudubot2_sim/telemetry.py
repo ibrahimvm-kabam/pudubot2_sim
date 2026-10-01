@@ -35,6 +35,10 @@ class RobotState:
     awaiting_user_input: bool
     estop: bool
 
+    @property
+    def battery_percentage(self) -> int:
+        return round(self.battery_level)
+
     @classmethod
     def from_config(cls, config: Config) -> RobotState:
         return cls(
@@ -66,8 +70,14 @@ class TelemetryBroker:
         self._publish(POSE, asdict(pose))
 
     def set_battery_level(self, level: float) -> None:
+        """Stores the exact level, but only publishes when the whole percentage changes.
+
+        The real robot reports battery as an integer percentage.
+        """
+        previous_percentage = self.state.battery_percentage
         self.state.battery_level = level
-        self._publish(BATTERY_LEVEL, level)
+        if self.state.battery_percentage != previous_percentage:
+            self._publish(BATTERY_LEVEL, self.state.battery_percentage)
 
     def set_charging(self, charging: bool) -> None:
         self.state.charging = charging
@@ -111,7 +121,7 @@ class TelemetryBroker:
             json.dumps({"type": LOCALIZATION_STATUS, "data": state.localized}),
             json.dumps({"type": ACTIVE_MAP, "data": state.active_map}),
             json.dumps({"type": USER_ACKNOWLEDGEMENT_STATUS, "data": state.awaiting_user_input}),
-            json.dumps({"type": BATTERY_LEVEL, "data": state.battery_level}),
+            json.dumps({"type": BATTERY_LEVEL, "data": state.battery_percentage}),
             json.dumps({"type": CHARGING_STATUS, "data": state.charging}),
             json.dumps({"type": ESTOP, "data": state.estop}),
         ]
